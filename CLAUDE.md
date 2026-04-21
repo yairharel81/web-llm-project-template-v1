@@ -107,6 +107,29 @@ Set all to `true` for local dev (default in `.env.example`).
 
 ---
 
+## Testing (Playwright)
+
+The baseline E2E suite lives in `tests/e2e/` and covers auth (register, login, wrong password, protected route, logout).
+
+```bash
+# First time only — install browsers
+cd tests/e2e && npm install && npx playwright install chromium
+
+# Run tests (requires both servers to be running first)
+npx playwright test
+
+# Debug a failing test visually
+npx playwright test --headed
+npx playwright show-trace test-results/<test-folder>/trace.zip
+```
+
+**Adding tests for a new feature:**
+- Create `tests/e2e/tests/<feature>.spec.ts` — do not modify `auth.spec.ts`
+- Use `page.goto("/login")` + fill credentials to log in before each test
+- Name your SSE event types and assert toast notifications appear with `toBeVisible()`
+
+---
+
 ## Running locally
 ```bash
 # 1. Start infrastructure
