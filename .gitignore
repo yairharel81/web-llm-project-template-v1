@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+*.egg-info/
+dist/
+build/
+.eggs/
+*.so
+
+# Env files — never commit real credentials
+.env
+.env.local
+.env.*.local
+
+# Alembic generated (keep versions/ tracked)
+backend/local_storage/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/tsconfig.tsbuildinfo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
