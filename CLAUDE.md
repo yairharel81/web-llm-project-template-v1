@@ -70,6 +70,8 @@ function MyPage() {
 
 **SSE auth note:** `EventSource` cannot set custom headers, so the JWT is passed as `?token=TOKEN` in the query string. The backend `/events/stream` reads it from there — this is already wired up in `sseContext.tsx` and `events.py`.
 
+**SSE timing in tests:** `useSSEEvent` registers its handler inside a `useEffect`, which fires *after* the component renders. In Playwright tests, always wait for a visible landmark element (e.g. `await expect(page.getByText("some column")).toBeVisible()`) before triggering the server-side event that should produce a notification. Without this wait the handler may not be registered yet and the toast never appears.
+
 ### Add a new AI capability
 - Add a method to `GeminiService` protocol + both `MockGeminiService` and `RealGeminiService` in `backend/app/core/gemini.py`
 - Call via `get_gemini_service()` in any service or route
@@ -125,8 +127,16 @@ npx playwright show-trace test-results/<test-folder>/trace.zip
 
 **Adding tests for a new feature:**
 - Create `tests/e2e/tests/<feature>.spec.ts` — do not modify `auth.spec.ts`
-- Use `page.goto("/login")` + fill credentials to log in before each test
+- Copy the `registerAndLogin` / `loginAs` / `twoUserContexts` helpers from `example.spec.ts` — they handle the patterns that trip up naive implementations (see notes below)
 - Name your SSE event types and assert toast notifications appear with `toBeVisible()`
+
+**Test authoring gotchas:**
+
+1. **Generate unique emails inside each test function, not at module level.** Playwright may re-evaluate module-level code between tests, so `const email = \`test_${Date.now()}@…\`` at the top of a file can produce a different value per test and break login-after-register flows. Use `const ts = Date.now()` inside the test body instead.
+
+2. **Two simultaneously-logged-in users require separate browser contexts.** Pages in the same context share `localStorage`, so logging in as a second user overwrites the first user's token. Use `twoUserContexts(browser)` from `example.spec.ts` (or `browser.newContext()` directly). Note that pages created from a custom context require **absolute URLs** (`http://localhost:5173/path`) — relative paths only work with the default Playwright `page` fixture.
+
+3. **Use `page.waitForURL(...)` not `expect(page).toHaveURL(...)` in login helpers.** `waitForURL` gives a clearer timeout error message and is less strict about timing.
 
 ---
 

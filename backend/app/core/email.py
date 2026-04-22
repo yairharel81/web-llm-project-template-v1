@@ -1,11 +1,6 @@
+import asyncio
 import logging
 from typing import Protocol
-
-import brevo_python
-from brevo_python.api import transactional_emails_api
-from brevo_python.model.send_smtp_email import SendSmtpEmail
-from brevo_python.model.send_smtp_email_sender import SendSmtpEmailSender
-from brevo_python.model.send_smtp_email_to_inner import SendSmtpEmailToInner
 
 from app.core.config import settings
 
@@ -39,11 +34,17 @@ class MockEmailService:
 
 
 class BrevoEmailService:
+    """Brevo transactional email (brevo-python v4+).
+
+    The package was renamed from `brevo_python` to `brevo` in v4.
+    Import is deferred so the mock path never touches the SDK.
+    """
+
     def __init__(self) -> None:
-        configuration = brevo_python.Configuration()
-        configuration.api_key["api-key"] = settings.brevo_api_key
-        client = brevo_python.ApiClient(configuration)
-        self._api = transactional_emails_api.TransactionalEmailsApi(client)
+        import brevo  # noqa: PLC0415
+
+        self._brevo = brevo
+        self._api_key = settings.brevo_api_key
 
     async def send(
         self,
@@ -52,21 +53,22 @@ class BrevoEmailService:
         subject: str,
         html_content: str,
     ) -> None:
-        email = SendSmtpEmail(
-            sender=SendSmtpEmailSender(
-                email=settings.email_from,
-                name=settings.email_from_name,
-            ),
-            to=[SendSmtpEmailToInner(email=to_email, name=to_name)],
-            subject=subject,
-            html_content=html_content,
-        )
-        import asyncio
+        brevo = self._brevo
+
+        def _send() -> None:
+            client = brevo.Brevo(api_key=self._api_key)
+            client.transactional_emails.send_transac_email(
+                brevo.SendTransacEmailRequestSender(
+                    email=settings.email_from,
+                    name=settings.email_from_name,
+                ),
+                to=[brevo.SendTransacEmailRequestToItem(email=to_email, name=to_name)],
+                subject=subject,
+                html_content=html_content,
+            )
 
         loop = asyncio.get_event_loop()
-        await loop.run_in_executor(
-            None, self._api.send_transac_email, email
-        )
+        await loop.run_in_executor(None, _send)
 
 
 def get_email_service() -> EmailService:
