@@ -1,0 +1,93 @@
+## Setup
+
+  1. Clone the template into a new project folder:
+     git clone https://github.com/yairharel81/web-llm-project-template-v1.git taskflow
+     cd taskflow
+
+  2. Start infrastructure (Postgres + Redis):
+     docker compose up -d
+
+  3. Set up the backend:
+     cd backend
+     python3 -m venv .venv && source .venv/bin/activate
+     pip install -e .
+     cp ../.env.example .env
+     alembic upgrade head
+     cd ..
+
+  4. Set up the frontend:
+     cd frontend && npm install && cd ..
+
+  5. Set up Playwright (first time only):
+     cd tests/e2e && npm install && npx playwright install chromium && cd ../..
+
+  Now read CLAUDE.md and README.md before writing any code. They tell you
+  exactly which files to touch for each type of change.
+
+  ---
+
+  ## App: TaskFlow — Team Task Manager
+
+  ### What to build
+  A multi-user task management app where users can:
+  1. Create projects (a named container for tasks)
+  2. Create tasks inside projects (title, description, priority: low/medium/high,
+     due date, assignee)
+  3. Assign tasks to other registered users
+  4. Update task status (todo → in_progress → done)
+  5. Receive a real-time SSE notification when they are assigned a new task
+  6. Get an email (via Brevo) when they are assigned a task
+  7. Ask the built-in AI assistant (Gemini) to summarize all open tasks in a
+     project as a daily briefing
+
+  ### Backend requirements
+  - New database tables: Project, Task (with FK to Project and User),
+    ProjectMember join table (users can belong to multiple projects)
+  - REST endpoints:
+    - POST   /api/v1/projects              — create project
+    - GET    /api/v1/projects              — list my projects
+    - POST   /api/v1/projects/{id}/tasks   — create task in project
+    - GET    /api/v1/projects/{id}/tasks   — list tasks in project
+    - PATCH  /api/v1/tasks/{id}/status     — update status
+    - POST   /api/v1/projects/{id}/summary — AI summary of open tasks
+  - Publish SSE event type "task_assigned" when a task is assigned to a user
+  - Send a Brevo email on assignment using the email service
+
+  ### Frontend requirements
+  - /projects page: list projects, create project button
+  - /projects/:id page: task list with 3 kanban columns (todo / in_progress / done),
+    create task form with assignee dropdown (project members only)
+  - Toast notification when a "task_assigned" SSE event arrives (use useSSEEvent)
+  - AI Summary button on the project page that calls /summary and shows the
+    result in a modal
+
+  ### Rules
+  - Read CLAUDE.md before touching any file — follow every pattern already in
+    the template, do not invent new ones
+  - Use the existing mock/real service pattern for Gemini and email
+  - Use useSSEEvent() for real-time events, never useSSE() inside pages
+  - Do not modify any existing auth, user, or core infrastructure files
+  - Run alembic migrations after adding models
+
+  ---
+
+  ## Deliver
+
+  When done, list every file created or modified.
+
+  Start both servers:
+     # Terminal 1 — backend
+     cd backend && source .venv/bin/activate && uvicorn app.main:app --reload
+
+     # Terminal 2 — frontend
+     cd frontend && npm run dev
+
+  Run the full Playwright suite — all tests must pass before declaring done:
+     cd tests/e2e && npx playwright test
+
+  The suite already covers baseline auth. Add a new spec file for your feature
+  tests (do not modify auth.spec.ts). Provide the final test output showing
+  all tests passing and the local URLs:
+  - Frontend:        http://localhost:5173
+  - Backend API docs: http://localhost:8000/docs
+
